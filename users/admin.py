@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-
+from tasks.models import Tasks
 from users.models import CustomUser
 
 
@@ -22,4 +22,14 @@ class CustomUserAdmin(UserAdmin):
     ordering = ('email',)
 
 
+class TasksAdmin(admin.ModelAdmin):
+    model = Tasks
+    list_display = ('id', 'title', 'description', 'due_date', 'is_done')
+    list_display_links = ('id', 'title')
+    search_fields = ('id', 'title', 'description')
+    list_editable = ('is_done',)
+    list_filter = ('is_done',)
+
+
 admin.site.register(CustomUser, CustomUserAdmin)
+admin.site.register(Tasks, TasksAdmin)
