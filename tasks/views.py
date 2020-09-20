@@ -30,13 +30,12 @@ class TasksList(APIView):
 
     def get(self, request):
         try:
-            tasks = Tasks.objects.get(owner=request.user.id)
+            tasks = Tasks.objects.filter(owner=request.user)
         except Tasks.DoesNotExist:
             return Response({})
-        serializer = TasksSerializer(tasks)
+        serializer = TasksSerializer(tasks, many=True)
         return Response(serializer.data)
 
-    # TODO
     def post(self, request):
         serializer = TasksSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
@@ -45,25 +44,36 @@ class TasksList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class TasksDetail(APIView):
-    def get_object(self, pk):
+
+    def get_object(self, request, pk):
         try:
-            return Tasks.objects.get(pk=pk)
+            task = Tasks.objects.get(pk=pk)
+            if task.owner == request.user:
+                return task
+            else:
+                return None
         except Tasks.DoesNotExist:
             raise Http404
 
     def get(self, request, pk, format=None):
-        task = self.get_object(pk)
+        task = self.get_object(request, pk)
+        if task is None:
+            return Response('You do not have an access to proceed this action', status=status.HTTP_403_FORBIDDEN)
         serializer = TasksSerializer(task)
         return Response(serializer.data)
 
     def delete(self, request, pk, format=None):
-        task = self.get_object(pk)
+        task = self.get_object(request, pk)
+        if task is None:
+            return Response('You do not have an access to proceed this action', status=status.HTTP_403_FORBIDDEN)
         task.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def patch(self, request, pk):
-        task = self.get_object(pk)
-        serializer = TasksSerializer(task, data=request.data, partial=True)
+        task = self.get_object(request, pk)
+        if task is None:
+            return Response('You do not have an access to proceed this action', status=status.HTTP_403_FORBIDDEN)
+        serializer = TasksSerializer(task, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(status=status.HTTP_201_CREATED, data=serializer.data)
