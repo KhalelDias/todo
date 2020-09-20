@@ -1,10 +1,29 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404
 from rest_framework import status
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from tasks.models import Tasks
 from tasks.serializers import TasksSerializer
+from .tasks import send_email_execute
+
+
+@api_view(('POST',))
+def mark_done(request, pk):
+    try:
+        task = Tasks.objects.get(pk=pk)
+        done_undone = 'done'
+        if task.is_done is False:
+            task.is_done = True
+        else:
+            task.is_done = False
+            done_undone = 'undone'
+        task.save()
+        send_email_execute.delay(request.user.email, task.title, done_undone)
+        return Response(TasksSerializer(task).data)
+    except Tasks.DoesNotExist:
+        raise Http404
 
 
 class TasksList(APIView):
